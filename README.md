@@ -229,7 +229,9 @@ val filmeViewModel: FilmeViewModel = viewModel(factory = FilmeViewModelFactory(f
 
 ### Algum integrante teve dificuldade em algum ponto?
 
-> ✏️ **PREENCHER PELO TRIO:** algum integrante teve dificuldade em algum ponto? Como resolveram?
+**Marcos:** Quando fomos abrir o projeto na sala no Android Studio ele não sincronizava, e descobrimos que era o `settings.gradle.kts` com `"com\.android.*"`, que o Kotlin não aceita, aí trocamos para `"com\\.android.*"` e funcionou, e também depois de mover os arquivos para os pacotes, um monte de coisa ficou vermelha por falta de import, e a que mais demorou para achar foi o `Imagens.kt` que parou de encontrar o `R`, porque o `R` fica no pacote `com.example.netflix` e precisou do `import com.example.netflix.R`.
+
+> ✏️ **PREENCHER PELOS OUTROS DOIS INTEGRANTES:** algum integrante teve dificuldade em algum ponto? Como resolveram?
 
 ---
 
