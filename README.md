@@ -1,8 +1,10 @@
-# Netflix Gameday — Trabalho 3: Persistência de Dados com Room
+# Netflix Gameday | Trabalho 4: Arquitetura MVVM
 
-App Android em Kotlin + Jetpack Compose que imita a Netflix. Ele continua o Trabalho 2: tem as mesmas telas e a mesma navegação com NavHost. A diferença é que agora os **perfis** e os **filmes** ficam salvos de verdade em um banco **Room** (SQLite) no próprio aparelho e continuam lá depois que o app é fechado.
+App Android em Kotlin + Jetpack Compose que imita a Netflix. No Trabalho 3, os **perfis** e os **filmes** passaram a ficar salvos em um banco **Room** (SQLite) no próprio aparelho. No Trabalho 4 o app continua com as mesmas telas e as mesmas funções, mas o código foi reorganizado em camadas no padrão **MVVM** (Model, View, ViewModel), com **Repository**, **StateFlow/UiState** e **ViewModelFactory**.
 
-> Disciplina: Desenvolvimento de Aplicativos Móveis — Trabalho 3 de 4 da A2.
+> Disciplina: Desenvolvimento de Aplicativos Móveis. Trabalho 4 de 4 da A2 (continuação do Trabalho 3).
+>
+> A documentação do Trabalho 4 está na seção [Arquitetura MVVM (Trabalho 4)](#arquitetura-mvvm-trabalho-4). As seções do Trabalho 3 continuam mais abaixo.
 
 ---
 
@@ -21,9 +23,11 @@ gradle/libs.versions.toml     <- versões usadas pelos alias(libs...)
 app/build.gradle.kts          <- módulo: Compose, Navigation e Room
 app/src/main/AndroidManifest.xml
 app/src/main/java/com/example/netflix/
-    MainActivity.kt           <- ponto de entrada; chama AppNavigation()
-    AppNavigation.kt          <- NavHost com todas as rotas
-    Tela*.kt, *ViewModel.kt, Filme/Perfil, DAOs e AppDatabase
+    MainActivity.kt           <- ponto de entrada; cria os Repositories e chama AppNavigation(...)
+    data/                     <- Entities, DAOs e AppDatabase (Room)
+    data/repository/          <- FilmeRepository e PerfilRepository
+    viewmodel/                <- ViewModels, UiState e Factories
+    ui/                       <- telas (@Composable), NavHost e componentes visuais
 app/src/main/res/drawable/    <- capas e fotos de perfil
 ```
 
@@ -69,7 +73,169 @@ As dependências que já vinham do Trabalho 2 continuam no `app/build.gradle.kts
 
 ---
 
-## Estrutura do Room
+## Arquitetura MVVM (Trabalho 4)
+
+O Trabalho 4 não adiciona tela nem funcionalidade. O app faz exatamente o que já fazia no Trabalho 3 (adicionar, listar, atualizar, remover e persistir), só que agora cada parte do código tem uma responsabilidade só.
+
+```
+com.example.netflix/
+    MainActivity.kt                    <- abre o banco, cria os Repositories e chama AppNavigation(...)
+    data/
+        Filme.kt, Perfil.kt            <- @Entity
+        FilmeDAO.kt, PerfilDAO.kt      <- @Dao (buscarTodos() agora retorna Flow)
+        AppDatabase.kt                 <- @Database em Singleton
+    data/repository/
+        FilmeRepository.kt             <- única porta de entrada para os dados de filmes
+        PerfilRepository.kt            <- única porta de entrada para os dados de perfis
+    viewmodel/
+        FilmeViewModel.kt   FilmeUiState.kt   FilmeViewModelFactory.kt
+        PerfilViewModel.kt  PerfilUiState.kt  PerfilViewModelFactory.kt
+    ui/
+        AppNavigation.kt               <- NavHost; cria os ViewModels com viewModel(factory = ...)
+        TelaPerfis, TelaInicio, TelaBuscar, TelaFilme, TelaDownloads, TelaMenu, TelaEditarPerfil
+        Componentes.kt, Imagens.kt     <- cores, botões, barras e fotos reutilizados pelas telas
+```
+
+**Caminho de uma ação** (ex.: adicionar um filme na tela Buscar):
+
+```
+TelaBuscar  --filmeViewModel.adicionar()-->  FilmeViewModel  --viewModelScope.launch-->  FilmeRepository.inserir()  -->  FilmeDAO.inserir()  -->  Room
+```
+
+**Caminho de volta** (a lista na tela se atualiza sozinha):
+
+```
+Room  --Flow<List<Filme>>-->  FilmeRepository.buscarTodos()  -->  FilmeViewModel (_uiState)  --uiState: StateFlow-->  TelaBuscar (collectAsState)
+```
+
+### Onde está cada item do checklist
+
+| Item do checklist | Onde está |
+|---|---|
+| Código em 4 pacotes: `ui`, `data`, `data.repository`, `viewmodel` | pastas `ui/`, `data/`, `data/repository/`, `viewmodel/` |
+| 1 Repository por Entity, e só ele fala com o DAO | `FilmeRepository(filmeDAO)` e `PerfilRepository(perfilDAO)` |
+| `buscarTodos()` do DAO retorna `Flow<List<...>>` | `FilmeDAO.buscarTodos()`, `FilmeDAO.buscarBaixados()` e `PerfilDAO.buscarTodos()` |
+| 2 ViewModels, cada um com seu UiState | `FilmeViewModel` + `FilmeUiState`, `PerfilViewModel` + `PerfilUiState` |
+| `_uiState` privado + `uiState` público (`StateFlow`) | início de cada ViewModel |
+| 1 Factory por ViewModel, injetando o Repository | `FilmeViewModelFactory` e `PerfilViewModelFactory` |
+| Telas sem `dao`, `CoroutineScope` ou `Dispatchers.IO` | pasta `ui/`: as telas só leem `uiState` e chamam métodos do ViewModel |
+
+### Como estava o projeto no Trabalho 3 e o que mudou
+
+| Antes (Trabalho 3) | Agora (Trabalho 4) |
+|---|---|
+| Todos os 18 arquivos soltos no mesmo pacote `com.example.netflix` | Arquivos separados nos pacotes `data`, `data.repository`, `viewmodel` e `ui` |
+| Cada tela abria o banco com `AppDatabase.getDatabase(context)` e passava o DAO para o ViewModel (`filmeViewModel.adicionar(busca, filmeDAO)`) | A tela não sabe que existe banco. Só chama `filmeViewModel.adicionar()` |
+| A `TelaFilme` buscava o filme com `CoroutineScope(Dispatchers.IO).launch { ... }` dentro do `@Composable` | A `TelaFilme` acha o filme pelo id na lista `filmes` do `FilmeUiState` |
+| Os ViewModels usavam `CoroutineScope(Dispatchers.IO)`, que não é cancelado quando o ViewModel some | Os ViewModels usam `viewModelScope.launch`, que é cancelado junto com o ViewModel |
+| `buscarTodos()` era `suspend` e devolvia `List`. Depois de cada inserir/atualizar/deletar o código tinha que buscar tudo de novo | `buscarTodos()` devolve `Flow`. O Room avisa sozinho quando a tabela muda |
+| Cada tela carregava os dados ao abrir, com `LaunchedEffect(Unit)` | O ViewModel começa a observar o banco uma vez, no `init`, e todas as telas recebem a lista pronta |
+| Estado espalhado: vários `mutableStateOf` no ViewModel e `remember` nas telas (texto da busca, novo perfil, novo nome) | Um `data class` de UiState por ViewModel, com tudo que as telas precisam |
+| A `TelaFilme` decidia se o perfil era admin percorrendo a lista `nomesAdmin` | O `PerfilViewModel` calcula `ehAdmin` e a tela só lê `uiState.ehAdmin` |
+| Funções soltas de acesso ao banco (`buscarFilmes`, `inserirFilme`...) com `try/catch` no fim dos ViewModels | Os mesmos `try/catch` + `Log.e` agora ficam dentro do Repository |
+
+### Como o trio decidiu dividir os pacotes
+
+- **`data`**: as duas `@Entity` (`Filme`, `Perfil`), os dois `@Dao` e o `AppDatabase`. Foram só movidos; continuam do jeito do Trabalho 3 (a única mudança é o `Flow`, seção abaixo).
+- **`data.repository`**: `FilmeRepository` e `PerfilRepository`. Ficam dentro de `data` porque fazem parte da camada de dados, mas em um pacote próprio porque não são Room.
+- **`viewmodel`**: para cada ViewModel ficaram juntos os três arquivos que trabalham juntos: o `ViewModel`, o `UiState` e a `Factory`.
+- **`ui`**: as 7 telas, o `AppNavigation` (é ele que monta as telas) e os arquivos `Componentes.kt` e `Imagens.kt`, que só desenham coisas na tela.
+- **`MainActivity`** ficou na raiz: é o ponto de entrada do app (o `AndroidManifest` aponta para ela) e é o único lugar fora de `data` que abre o `AppDatabase`, só para criar os Repositories.
+
+Decisão importante: os dois ViewModels continuam sendo criados **uma vez só, no `AppNavigation`**, e passados para as telas (igual ao Trabalho 3). O perfil escolhido aparece em todas as telas (barra inferior, "Para lau" no Início, área de admin na tela do filme). Se cada tela criasse o seu próprio ViewModel, cada uma teria um perfil atual diferente.
+
+### Por que o Repository existe
+
+Antes, quem chamava o DAO eram as telas e os ViewModels, e cada um precisava saber que os dados vinham do Room. Agora:
+
+```
+Tela  ->  ViewModel  ->  Repository  ->  DAO
+```
+
+- A tela nunca mais fala com o DAO. Só o Repository fala com o DAO, e só o ViewModel fala com o Repository.
+- Se um dia os filmes vierem de outro lugar além do Room (uma API, por exemplo), só o `FilmeRepository` muda. ViewModel e telas continuam iguais.
+- O tratamento de erro (`try/catch` + `Log.e`) e a carga inicial (gravar os filmes e perfis do Trabalho 2 quando o banco está vazio) ficaram num lugar só, em vez de espalhados pelos ViewModels.
+
+### DAO reativo com Flow
+
+```kotlin
+@Query("SELECT * FROM filmes")
+fun buscarTodos(): Flow<List<Filme>>
+```
+
+Sem `suspend`, porque o `Flow` já é assíncrono. O ViewModel começa a observar esse `Flow` no `init` e, sempre que um filme é inserido, renomeado, baixado ou excluído, o Room manda a lista nova sozinho. Por isso sumiram todos os "buscar de novo depois de alterar" e todos os `LaunchedEffect(Unit)` de carga das telas.
+
+O mesmo vale para `buscarBaixados()` (tela de Downloads) e `PerfilDAO.buscarTodos()`. Também criamos `contar()` nos dois DAOs, para o Repository saber se o banco está vazio e gravar os itens iniciais. A consulta `buscarPorId(id)` do Trabalho 3 continua no DAO, mas a `TelaFilme` não precisa mais dela: o filme já está na lista observada.
+
+### O que tem dentro do UiState de cada tela
+
+**`FilmeUiState`** (usado por Início, Buscar, Filme e Downloads)
+
+| Campo | Por quê |
+|---|---|
+| `filmes: List<Filme>` | Lista da tela Buscar, contador "Todos os filmes (8)" e a tela do filme acha o filme por aqui |
+| `baixados: List<Filme>` | Lista e contador da tela Downloads |
+| `busca: String` | Texto digitado no campo "Buscar ou adicionar". Antes era um `remember` na tela |
+| `novoNome: String` | Texto do campo "Novo nome do filme" na área do administrador. Antes era um `remember` na tela |
+
+**`PerfilUiState`** (usado por todas as telas, por causa da barra inferior)
+
+| Campo | Por quê |
+|---|---|
+| `perfis: List<Perfil>` | Lista da tela Perfis e contador "6 perfis nesta conta" no Menu |
+| `perfilAtual: String` e `idPerfilAtual: Int` | Nome mostrado nas telas e id usado para renomear e excluir a linha certa do banco |
+| `ehAdmin: Boolean` | Mostra ou esconde a área do administrador na tela do filme. Antes a própria tela fazia essa conta |
+| `novoPerfil: String` | Texto do campo "Novo perfil". Antes era um `remember` na tela |
+| `nomeEditado: String` | Texto do campo "Nome do perfil" em Editar perfil. Antes era um `remember` na tela |
+| `proximoEpisodio`, `previas: Boolean` | Os dois checkboxes de Editar perfil (continuam só na memória, como no Trabalho 3) |
+
+Os campos de texto foram para o UiState porque o enunciado pede "tudo que aquela tela precisa para se desenhar" num lugar só. Assim a tela fica só com `uiState.xxx` para ler e `viewModel.xxx()` para chamar.
+
+Em cada ViewModel o padrão é o mesmo:
+
+```kotlin
+private val _uiState = MutableStateFlow(FilmeUiState())
+val uiState: StateFlow<FilmeUiState> = _uiState.asStateFlow()
+```
+
+`_uiState` é privado: só o ViewModel altera. `uiState` é público e só leitura: a tela observa com `val filmeUiState by filmeViewModel.uiState.collectAsState()`.
+
+### ViewModelFactory
+
+O `FilmeViewModel` agora recebe o `FilmeRepository` no construtor, e o Android não sabe criar sozinho um ViewModel com parâmetro. Por isso cada ViewModel tem uma `Factory` (`ViewModelProvider.Factory`) que entrega o Repository certo na hora da criação. No `AppNavigation`:
+
+```kotlin
+val filmeViewModel: FilmeViewModel = viewModel(factory = FilmeViewModelFactory(filmeRepository))
+```
+
+### Alguma funcionalidade quebrou durante a reorganização?
+
+- **Fotos sumiram do código (erro de compilação):** o `Imagens.kt` usa `R.drawable...`. A classe `R` é gerada no pacote `com.example.netflix`, então ao mover o arquivo para `ui` ele deixou de achar o `R`. Corrigido com `import com.example.netflix.R`.
+- **Tela do filme desatualizada:** no Trabalho 3 a `TelaFilme` guardava uma cópia do filme e, depois de renomear ou baixar, atualizava essa cópia na mão (`filme = Filme(filme.id, novoNome, ...)`). Agora a tela lê o filme da lista `filmes` do UiState, que vem do `Flow`. Quando o Room grava, a tela muda sozinha, e essas linhas foram removidas.
+- **Texto do Editar perfil:** antes o campo começava com o nome do perfil porque o `remember` era criado toda vez que a tela abria. Com o texto no UiState, ele ficaria com o que foi digitado da última vez. Corrigido com `comecarEdicao()`, chamado pelo botão "Editar perfil" do Menu, que copia o nome atual para `nomeEditado`.
+- **Projeto não sincronizava:** o `settings.gradle.kts` estava com `includeGroupByRegex("com\.android.*")`, e o Kotlin não aceita `\.` dentro de texto. Corrigido para `"com\\.android.*"` (o mesmo vale para `com.google`).
+
+> ✏️ **PREENCHER PELO TRIO:** complementem com o que aconteceu com vocês ao testar no emulador.
+
+### Teste: o app continua fazendo tudo que fazia (prints / vídeo)
+
+> ✏️ **PREENCHER PELO TRIO:** prints ou vídeo curto mostrando o roteiro abaixo.
+>
+> 1. Adicionar um perfil na tela de Perfis e um filme na tela Buscar. A lista e o contador atualizam na hora.
+> 2. Entrar com o perfil Admin, abrir um filme, baixar e renomear. O selo "Baixado" e o nome mudam na mesma tela.
+> 3. Ir em Downloads, ver o filme e remover o download pela lixeira.
+> 4. Excluir um filme e editar/excluir um perfil.
+> 5. **Fechar o app completamente** e abrir de novo: tudo continua lá.
+
+### Algum integrante teve dificuldade em algum ponto?
+
+> ✏️ **PREENCHER PELO TRIO:** algum integrante teve dificuldade em algum ponto? Como resolveram?
+
+---
+
+## Estrutura do Room (Trabalho 3)
+
+Desde o Trabalho 4, as Entities, os DAOs e o `AppDatabase` ficam no pacote `data`, e o `AppNavigation` e o `Componentes` ficam em `ui`.
 
 | Arquivo | O que é |
 |---|---|
@@ -81,14 +247,14 @@ As dependências que já vinham do Trabalho 2 continuam no `app/build.gradle.kts
 | `AppNavigation.kt` | `NavHost` com todas as rotas do app, separado do `MainActivity` como no exemplo da Aula 13 (`MainActivity` -> `AppNavigation()`) |
 | `Componentes.kt` | Cores do app, barra superior (`TopAppBar`) e botão vermelho reutilizados em todas as telas |
 
-Todos os métodos dos DAOs são `suspend fun`. Toda chamada ao banco é feita dentro de `CoroutineScope(Dispatchers.IO).launch { ... }` e protegida com `try/catch` + `Log.e(...)`, como no exemplo de Filmes da aula.
+No Trabalho 3, todos os métodos dos DAOs eram `suspend fun` e cada chamada ao banco era feita dentro de `CoroutineScope(Dispatchers.IO).launch { ... }`. No Trabalho 4, as buscas de listas viraram `Flow`, as gravações são chamadas pelo Repository dentro de `viewModelScope.launch { ... }` e o `try/catch` + `Log.e(...)` ficou no Repository.
 
 ### Onde cada operação do CRUD acontece no app
 
 | Operação | Onde, no app | Método do DAO |
 |---|---|---|
-| **Buscar** | Ao abrir as telas Perfis, Início, Buscar, Menu e Downloads (`LaunchedEffect(Unit)`) | `buscarTodos()` / `buscarBaixados()` |
-| **Buscar por id** | Tela do filme: recebe só o id pela rota `filme/{id}` e busca o filme no banco | `buscarPorId(id)` |
+| **Buscar** | O ViewModel observa o `Flow` desde que é criado; as telas Perfis, Início, Buscar, Menu e Downloads só leem a lista do `uiState` | `buscarTodos()` / `buscarBaixados()` |
+| **Buscar por id** | Tela do filme: recebe só o id pela rota `filme/{id}` e acha o filme na lista `filmes` do `FilmeUiState` (no Trabalho 3 usava `buscarPorId(id)`) | nenhum |
 | **Inserir** | Botão **Add** na tela de Perfis (novo perfil) e na tela Buscar (novo filme) | `inserir(...)` |
 | **Atualizar** | **Salvar nome** na tela do filme (perfil admin), **Salvar** em Editar perfil, **Baixar** na tela do filme e a lixeira em Downloads (muda o campo `baixado`) | `atualizar(...)` |
 | **Remover** | **Excluir filme** na tela do filme (perfil admin) e **Excluir perfil** em Editar perfil | `deletar(...)` |
@@ -112,7 +278,7 @@ Usamos só componentes vistos no material da disciplina (slides e código das au
 
 ---
 
-## Documentação do processo e das decisões
+## Documentação do processo e das decisões (Trabalho 3)
 
 ### Como estava o projeto no Trabalho 2 e o que mudou
 
