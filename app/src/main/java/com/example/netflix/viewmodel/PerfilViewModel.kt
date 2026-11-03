@@ -1,22 +1,20 @@
-package com.example.netflix
+package com.example.netflix.viewmodel
 
-import android.util.Log
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import androidx.lifecycle.viewModelScope
+import com.example.netflix.data.Perfil
+import com.example.netflix.data.repository.PerfilRepository
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class PerfilViewModel : ViewModel() {
+class PerfilViewModel(private val repository: PerfilRepository) : ViewModel() {
 
-    // A lista agora e uma copia do que esta no banco (Room)
-    var perfis by mutableStateOf<List<Perfil>>(emptyList())
-        private set
+    private val _uiState = MutableStateFlow(PerfilUiState())
+    val uiState: StateFlow<PerfilUiState> = _uiState.asStateFlow()
 
-    val nomesAdmin = mutableStateListOf(
+    private val nomesAdmin = listOf(
         "admin", "admiN", "admIn", "admIN",
         "adMin", "adMiN", "adMIn", "adMIN",
         "aDmin", "aDmiN", "aDmIn", "aDmIN",
@@ -27,108 +25,78 @@ class PerfilViewModel : ViewModel() {
         "ADMin", "ADMiN", "ADMIn", "ADMIN"
     )
 
-    var perfilAtual by mutableStateOf("lau")
-        private set
-
-    // id do perfil atual no banco, usado para atualizar e excluir a linha certa
-    var idPerfilAtual by mutableStateOf(0)
-        private set
-
-    var proximoEpisodio by mutableStateOf(true)
-        private set
-
-    var previas by mutableStateOf(true)
-        private set
-
-    fun carregar(perfilDAO: PerfilDAO) {
-        CoroutineScope(Dispatchers.IO).launch {
-            var lista = buscarPerfis(perfilDAO)
-            if (lista.isEmpty()) {
-                // Primeira vez que o app abre: grava no banco os perfis que eram fixos no Trabalho 2
-                inserirPerfisIniciais(perfilDAO)
-                lista = buscarPerfis(perfilDAO)
+    init {
+        viewModelScope.launch {
+            repository.inserirIniciaisSeVazio()
+        }
+        viewModelScope.launch {
+            repository.buscarTodos().collect { lista ->
+                _uiState.value = _uiState.value.copy(perfis = lista)
             }
-            perfis = lista
         }
     }
 
     fun selecionar(perfil: Perfil) {
-        perfilAtual = perfil.nome
-        idPerfilAtual = perfil.id
+        _uiState.value = _uiState.value.copy(
+            perfilAtual = perfil.nome,
+            idPerfilAtual = perfil.id,
+            ehAdmin = nomesAdmin.contains(perfil.nome)
+        )
     }
 
-    fun adicionar(nome: String, perfilDAO: PerfilDAO) {
-        CoroutineScope(Dispatchers.IO).launch {
-            inserirPerfil(Perfil(0, nome), perfilDAO)
-            perfis = buscarPerfis(perfilDAO)
+    fun atualizarNovoPerfil(texto: String) {
+        _uiState.value = _uiState.value.copy(novoPerfil = texto)
+    }
+
+    fun adicionar(): Boolean {
+        val nome = _uiState.value.novoPerfil
+        if (nome == "") {
+            return false
         }
-    }
-
-    fun renomear(novoNome: String, perfilDAO: PerfilDAO) {
-        val perfil = Perfil(idPerfilAtual, novoNome)
-        perfilAtual = novoNome
-        CoroutineScope(Dispatchers.IO).launch {
-            atualizarPerfil(perfil, perfilDAO)
-            perfis = buscarPerfis(perfilDAO)
+        _uiState.value = _uiState.value.copy(novoPerfil = "")
+        viewModelScope.launch {
+            repository.inserir(Perfil(0, nome))
         }
+        return true
     }
 
-    fun excluir(perfilDAO: PerfilDAO) {
-        val perfil = Perfil(idPerfilAtual, perfilAtual)
-        CoroutineScope(Dispatchers.IO).launch {
-            deletarPerfil(perfil, perfilDAO)
-            perfis = buscarPerfis(perfilDAO)
+    fun comecarEdicao() {
+        _uiState.value = _uiState.value.copy(nomeEditado = _uiState.value.perfilAtual)
+    }
+
+    fun atualizarNomeEditado(texto: String) {
+        _uiState.value = _uiState.value.copy(nomeEditado = texto)
+    }
+
+    fun renomear(): Boolean {
+        val novoNome = _uiState.value.nomeEditado
+        if (novoNome == "") {
+            return false
+        }
+        val perfil = Perfil(_uiState.value.idPerfilAtual, novoNome)
+        _uiState.value = _uiState.value.copy(
+            perfilAtual = novoNome,
+            ehAdmin = nomesAdmin.contains(novoNome)
+        )
+        viewModelScope.launch {
+            repository.atualizar(perfil)
+        }
+        return true
+    }
+
+    fun excluir() {
+        val perfil = Perfil(_uiState.value.idPerfilAtual, _uiState.value.perfilAtual)
+        viewModelScope.launch {
+            repository.deletar(perfil)
         }
     }
 
     fun alternarProximoEpisodio() {
-        proximoEpisodio = !proximoEpisodio
+        _uiState.value = _uiState.value.copy(proximoEpisodio = !_uiState.value.proximoEpisodio)
     }
 
     fun alternarPrevias() {
-        previas = !previas
+        _uiState.value = _uiState.value.copy(previas = !_uiState.value.previas)
     }
 
-}
-
-suspend fun inserirPerfisIniciais(perfilDAO: PerfilDAO) {
-    inserirPerfil(Perfil(0, "Manu"), perfilDAO)
-    inserirPerfil(Perfil(0, "Rsjr"), perfilDAO)
-    inserirPerfil(Perfil(0, "buarda"), perfilDAO)
-    inserirPerfil(Perfil(0, "lau"), perfilDAO)
-    inserirPerfil(Perfil(0, "Gabi"), perfilDAO)
-    inserirPerfil(Perfil(0, "Admin"), perfilDAO)
-}
-
-suspend fun buscarPerfis(perfilDAO: PerfilDAO): List<Perfil> {
-    return try {
-        perfilDAO.buscarTodos()
-    } catch (e: Exception) {
-        Log.e("Erro ao buscar perfis", "Msg: ${e.message}")
-        emptyList()
-    }
-}
-
-suspend fun inserirPerfil(perfil: Perfil, perfilDAO: PerfilDAO) {
-    try {
-        perfilDAO.inserir(perfil)
-    } catch (e: Exception) {
-        Log.e("Erro ao inserir perfil", "Msg: ${e.message}")
-    }
-}
-
-suspend fun atualizarPerfil(perfil: Perfil, perfilDAO: PerfilDAO) {
-    try {
-        perfilDAO.atualizar(perfil)
-    } catch (e: Exception) {
-        Log.e("Erro ao atualizar perfil", "Msg: ${e.message}")
-    }
-}
-
-suspend fun deletarPerfil(perfil: Perfil, perfilDAO: PerfilDAO) {
-    try {
-        perfilDAO.deletar(perfil)
-    } catch (e: Exception) {
-        Log.e("Erro ao deletar perfil", "Msg: ${e.message}")
-    }
 }

@@ -1,4 +1,4 @@
-package com.example.netflix
+package com.example.netflix.ui
 
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
@@ -23,33 +23,26 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.netflix.viewmodel.FilmeViewModel
+import com.example.netflix.viewmodel.PerfilViewModel
 
 @Composable
 fun TelaBuscar(viewModel: PerfilViewModel, filmeViewModel: FilmeViewModel, irParaInicio: () -> Unit, irParaMenu: () -> Unit, irParaFilme: (Int) -> Unit) {
 
-    var busca by remember { mutableStateOf("") }
+    val perfilUiState by viewModel.uiState.collectAsState()
+    val filmeUiState by filmeViewModel.uiState.collectAsState()
     val context = LocalContext.current
-    val db = AppDatabase.getDatabase(context)
-    val filmeDAO = db.filmeDAO()
-
-    // Ao abrir a tela, busca os filmes no banco
-    LaunchedEffect(Unit) {
-        filmeViewModel.carregar(filmeDAO)
-    }
 
     Scaffold(
-        bottomBar = { BarraInferior("buscar", viewModel.perfilAtual, irParaInicio, {}, irParaMenu) }
+        bottomBar = { BarraInferior("buscar", perfilUiState.perfilAtual, irParaInicio, {}, irParaMenu) }
     ) { innerPadding ->
 
         Surface(
@@ -74,17 +67,14 @@ fun TelaBuscar(viewModel: PerfilViewModel, filmeViewModel: FilmeViewModel, irPar
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     TextField(
                         modifier = Modifier.width(240.dp),
-                        value = busca,
-                        onValueChange = { busca = it },
+                        value = filmeUiState.busca,
+                        onValueChange = { filmeViewModel.atualizarBusca(it) },
                         placeholder = { Text("Buscar ou adicionar") }
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     BotaoNetflix("Add", VermelhoNetflix, Modifier.width(80.dp)) {
-                        if (busca == "") {
+                        if (!filmeViewModel.adicionar()) {
                             Toast.makeText(context, "Digite um nome", Toast.LENGTH_SHORT).show()
-                        } else {
-                            filmeViewModel.adicionar(busca, filmeDAO)
-                            busca = ""
                         }
                     }
                 }
@@ -131,7 +121,7 @@ fun TelaBuscar(viewModel: PerfilViewModel, filmeViewModel: FilmeViewModel, irPar
                 Spacer(modifier = Modifier.height(20.dp))
 
                 Text(
-                    text = "Todos os filmes (${filmeViewModel.filmes.size})",
+                    text = "Todos os filmes (${filmeUiState.filmes.size})",
                     color = Color(255, 255, 255),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
@@ -141,7 +131,7 @@ fun TelaBuscar(viewModel: PerfilViewModel, filmeViewModel: FilmeViewModel, irPar
 
                 LazyColumn {
 
-                    items(filmeViewModel.filmes) {
+                    items(filmeUiState.filmes) {
                         Column {
                             ItemFilme(it.nome) {
                                 irParaFilme(it.id)

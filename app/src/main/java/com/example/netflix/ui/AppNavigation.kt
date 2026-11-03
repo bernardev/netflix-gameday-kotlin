@@ -1,4 +1,4 @@
-package com.example.netflix
+package com.example.netflix.ui
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
@@ -9,13 +9,19 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.netflix.data.repository.FilmeRepository
+import com.example.netflix.data.repository.PerfilRepository
+import com.example.netflix.viewmodel.FilmeViewModel
+import com.example.netflix.viewmodel.FilmeViewModelFactory
+import com.example.netflix.viewmodel.PerfilViewModel
+import com.example.netflix.viewmodel.PerfilViewModelFactory
 
 // NavHost principal: define todas as rotas do app (como no AppNavigation.kt da Aula 13)
 @Composable
-fun AppNavigation() {
+fun AppNavigation(perfilRepository: PerfilRepository, filmeRepository: FilmeRepository) {
     val navController = rememberNavController()
-    val viewModel: PerfilViewModel = viewModel()
-    val filmeViewModel: FilmeViewModel = viewModel()
+    val viewModel: PerfilViewModel = viewModel(factory = PerfilViewModelFactory(perfilRepository))
+    val filmeViewModel: FilmeViewModel = viewModel(factory = FilmeViewModelFactory(filmeRepository))
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -53,7 +59,7 @@ fun AppNavigation() {
                 )
             }
 
-            // Rota com argumento: a tela de filme recebe so o id e busca o filme direto no banco
+            // Rota com argumento: a tela de filme recebe so o id e acha o filme na lista do FilmeViewModel
             composable("filme/{id}") { backStackEntry ->
                 val id = backStackEntry.arguments?.getString("id")?.toInt() ?: 0
                 TelaFilme(

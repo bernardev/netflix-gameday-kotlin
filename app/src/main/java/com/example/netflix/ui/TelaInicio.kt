@@ -1,4 +1,4 @@
-package com.example.netflix
+package com.example.netflix.ui
 
 import android.content.Context
 import android.widget.Toast
@@ -19,25 +19,22 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.netflix.viewmodel.FilmeViewModel
+import com.example.netflix.viewmodel.PerfilViewModel
 
 @Composable
 fun TelaInicio(viewModel: PerfilViewModel, filmeViewModel: FilmeViewModel, irParaBuscar: () -> Unit, irParaMenu: () -> Unit, irParaFilme: (Int) -> Unit) {
 
+    val perfilUiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
-    val db = AppDatabase.getDatabase(context)
-    val filmeDAO = db.filmeDAO()
-
-    // Ao abrir a tela, busca os filmes no banco (na primeira vez tambem grava os filmes iniciais)
-    LaunchedEffect(Unit) {
-        filmeViewModel.carregar(filmeDAO)
-    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -65,7 +62,7 @@ fun TelaInicio(viewModel: PerfilViewModel, filmeViewModel: FilmeViewModel, irPar
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Para ${viewModel.perfilAtual}",
+                        text = "Para ${perfilUiState.perfilAtual}",
                         color = Color(255, 255, 255),
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold
@@ -161,7 +158,7 @@ fun TelaInicio(viewModel: PerfilViewModel, filmeViewModel: FilmeViewModel, irPar
                 }
             }
 
-            BarraInferior("inicio", viewModel.perfilAtual, {}, irParaBuscar, irParaMenu)
+            BarraInferior("inicio", perfilUiState.perfilAtual, {}, irParaBuscar, irParaMenu)
         }
     }
 }

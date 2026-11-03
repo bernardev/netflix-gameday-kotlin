@@ -1,4 +1,4 @@
-package com.example.netflix
+package com.example.netflix.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -26,29 +26,25 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.netflix.viewmodel.FilmeViewModel
+import com.example.netflix.viewmodel.PerfilViewModel
 
 @Composable
 fun TelaDownloads(viewModel: PerfilViewModel, filmeViewModel: FilmeViewModel, irParaInicio: () -> Unit, irParaBuscar: () -> Unit, irParaMenu: () -> Unit, irParaFilme: (Int) -> Unit) {
 
-    val context = LocalContext.current
-    val db = AppDatabase.getDatabase(context)
-    val filmeDAO = db.filmeDAO()
-
-    // Ao abrir a tela, busca no banco so os filmes baixados
-    LaunchedEffect(Unit) {
-        filmeViewModel.carregarBaixados(filmeDAO)
-    }
+    val perfilUiState by viewModel.uiState.collectAsState()
+    val filmeUiState by filmeViewModel.uiState.collectAsState()
 
     Scaffold(
         topBar = { BarraTopo("Downloads", irParaMenu) },
-        bottomBar = { BarraInferior("downloads", viewModel.perfilAtual, irParaInicio, irParaBuscar, irParaMenu) }
+        bottomBar = { BarraInferior("downloads", perfilUiState.perfilAtual, irParaInicio, irParaBuscar, irParaMenu) }
     ) { innerPadding ->
 
         Surface(
@@ -62,14 +58,14 @@ fun TelaDownloads(viewModel: PerfilViewModel, filmeViewModel: FilmeViewModel, ir
                     .padding(16.dp)
             ) {
                 Text(
-                    text = "Filmes baixados (${filmeViewModel.baixados.size})",
+                    text = "Filmes baixados (${filmeUiState.baixados.size})",
                     color = CinzaTexto,
                     style = MaterialTheme.typography.bodyLarge
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                if (filmeViewModel.baixados.isEmpty()) {
+                if (filmeUiState.baixados.isEmpty()) {
                     // Lista vazia: explica como baixar em vez de deixar a tela em branco
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -90,7 +86,7 @@ fun TelaDownloads(viewModel: PerfilViewModel, filmeViewModel: FilmeViewModel, ir
 
                 LazyColumn {
 
-                    items(filmeViewModel.baixados) {
+                    items(filmeUiState.baixados) {
                         Column {
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
@@ -134,7 +130,7 @@ fun TelaDownloads(viewModel: PerfilViewModel, filmeViewModel: FilmeViewModel, ir
                                     Surface(
                                         modifier = Modifier
                                             .size(36.dp)
-                                            .clickable(onClick = { filmeViewModel.excluirDownload(it, filmeDAO) }),
+                                            .clickable(onClick = { filmeViewModel.excluirDownload(it) }),
                                         shape = RoundedCornerShape(18.dp),
                                         color = Color(255, 255, 255)
                                     ) {

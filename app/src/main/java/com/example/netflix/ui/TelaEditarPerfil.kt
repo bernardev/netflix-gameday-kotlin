@@ -1,4 +1,4 @@
-package com.example.netflix
+package com.example.netflix.ui
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
@@ -18,23 +18,20 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.example.netflix.viewmodel.PerfilViewModel
 
 @Composable
 fun TelaEditarPerfil(viewModel: PerfilViewModel, voltar: () -> Unit, irParaPerfis: () -> Unit) {
 
-    var campo by remember { mutableStateOf(viewModel.perfilAtual) }
+    val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
-    val db = AppDatabase.getDatabase(context)
-    val perfilDAO = db.perfilDAO()
 
     Column(modifier = Modifier.fillMaxSize()) {
 
@@ -46,7 +43,7 @@ fun TelaEditarPerfil(viewModel: PerfilViewModel, voltar: () -> Unit, irParaPerfi
                 modifier = Modifier.fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
-                Avatar(viewModel.perfilAtual, Color(232, 176, 4), Modifier.size(80.dp))
+                Avatar(uiState.perfilAtual, Color(232, 176, 4), Modifier.size(80.dp))
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -61,8 +58,8 @@ fun TelaEditarPerfil(viewModel: PerfilViewModel, voltar: () -> Unit, irParaPerfi
 
             TextField(
                 modifier = Modifier.fillMaxWidth(),
-                value = campo,
-                onValueChange = { campo = it },
+                value = uiState.nomeEditado,
+                onValueChange = { viewModel.atualizarNomeEditado(it) },
                 placeholder = { Text("Nome") }
             )
 
@@ -91,7 +88,7 @@ fun TelaEditarPerfil(viewModel: PerfilViewModel, voltar: () -> Unit, irParaPerfi
                         style = MaterialTheme.typography.bodyLarge
                     )
                     Checkbox(
-                        checked = viewModel.proximoEpisodio,
+                        checked = uiState.proximoEpisodio,
                         onCheckedChange = { viewModel.alternarProximoEpisodio() }
                     )
                 }
@@ -115,7 +112,7 @@ fun TelaEditarPerfil(viewModel: PerfilViewModel, voltar: () -> Unit, irParaPerfi
                         style = MaterialTheme.typography.bodyLarge
                     )
                     Checkbox(
-                        checked = viewModel.previas,
+                        checked = uiState.previas,
                         onCheckedChange = { viewModel.alternarPrevias() }
                     )
                 }
@@ -125,18 +122,17 @@ fun TelaEditarPerfil(viewModel: PerfilViewModel, voltar: () -> Unit, irParaPerfi
 
             // Acao principal em vermelho; excluir fica em cinza para nao ser tocado por engano
             BotaoNetflix("Salvar", VermelhoNetflix, Modifier.fillMaxWidth()) {
-                if (campo == "") {
-                    Toast.makeText(context, "Digite um nome", Toast.LENGTH_SHORT).show()
+                if (viewModel.renomear()) {
+                    Toast.makeText(context, "Perfil salvo: ${uiState.nomeEditado}", Toast.LENGTH_SHORT).show()
                 } else {
-                    viewModel.renomear(campo, perfilDAO)
-                    Toast.makeText(context, "Perfil salvo: $campo", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Digite um nome", Toast.LENGTH_SHORT).show()
                 }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
 
             BotaoNetflix("Excluir perfil", Color(43, 43, 43), Modifier.fillMaxWidth()) {
-                viewModel.excluir(perfilDAO)
+                viewModel.excluir()
                 irParaPerfis()
             }
         }

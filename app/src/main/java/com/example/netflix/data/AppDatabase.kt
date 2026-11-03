@@ -1,4 +1,4 @@
-package com.example.netflix
+package com.example.netflix.data
 
 import android.content.Context
 import androidx.room.Database

@@ -1,4 +1,4 @@
-package com.example.netflix
+package com.example.netflix.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -16,26 +16,20 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.netflix.viewmodel.PerfilViewModel
 
 @Composable
 fun TelaMenu(viewModel: PerfilViewModel, voltar: () -> Unit, sair: () -> Unit, irParaEditar: () -> Unit, irParaDownloads: () -> Unit) {
 
-    val context = LocalContext.current
-    val db = AppDatabase.getDatabase(context)
-    val perfilDAO = db.perfilDAO()
-
-    // Ao abrir a tela, busca os perfis no banco
-    LaunchedEffect(Unit) {
-        viewModel.carregar(perfilDAO)
-    }
+    val uiState by viewModel.uiState.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize()) {
 
@@ -54,19 +48,19 @@ fun TelaMenu(viewModel: PerfilViewModel, voltar: () -> Unit, sair: () -> Unit, i
                     modifier = Modifier.fillMaxWidth().padding(20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Avatar(viewModel.perfilAtual, Color(232, 176, 4), Modifier.size(80.dp))
+                    Avatar(uiState.perfilAtual, Color(232, 176, 4), Modifier.size(80.dp))
 
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Text(
-                        text = viewModel.perfilAtual,
+                        text = uiState.perfilAtual,
                         color = Color(255, 255, 255),
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold
                     )
 
                     Text(
-                        text = "${viewModel.perfis.size} perfis nesta conta",
+                        text = "${uiState.perfis.size} perfis nesta conta",
                         color = CinzaTexto,
                         style = MaterialTheme.typography.bodyMedium
                     )
@@ -74,6 +68,7 @@ fun TelaMenu(viewModel: PerfilViewModel, voltar: () -> Unit, sair: () -> Unit, i
                     Spacer(modifier = Modifier.height(16.dp))
 
                     BotaoNetflix("Editar perfil", VermelhoNetflix, Modifier.fillMaxWidth()) {
+                        viewModel.comecarEdicao()
                         irParaEditar()
                     }
                 }

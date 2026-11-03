@@ -1,4 +1,4 @@
-package com.example.netflix
+package com.example.netflix.ui
 
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
@@ -27,30 +27,21 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.netflix.viewmodel.PerfilViewModel
 
 @Composable
 fun TelaPerfis(viewModel: PerfilViewModel, irParaInicio: () -> Unit) {
 
-    var novoPerfil by remember { mutableStateOf("") }
+    val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
-    val db = AppDatabase.getDatabase(context)
-    val perfilDAO = db.perfilDAO()
-
-    // Ao abrir a tela, busca os perfis no banco
-    LaunchedEffect(Unit) {
-        viewModel.carregar(perfilDAO)
-    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Surface(
@@ -109,17 +100,14 @@ fun TelaPerfis(viewModel: PerfilViewModel, irParaInicio: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TextField(
                     modifier = Modifier.width(220.dp),
-                    value = novoPerfil,
-                    onValueChange = { novoPerfil = it },
+                    value = uiState.novoPerfil,
+                    onValueChange = { viewModel.atualizarNovoPerfil(it) },
                     placeholder = { Text("Novo perfil") }
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 BotaoNetflix("Add", VermelhoNetflix, Modifier.width(80.dp)) {
-                    if (novoPerfil == "") {
+                    if (!viewModel.adicionar()) {
                         Toast.makeText(context, "Digite um nome", Toast.LENGTH_SHORT).show()
-                    } else {
-                        viewModel.adicionar(novoPerfil, perfilDAO)
-                        novoPerfil = ""
                     }
                 }
             }
@@ -129,7 +117,7 @@ fun TelaPerfis(viewModel: PerfilViewModel, irParaInicio: () -> Unit) {
         Column(modifier = Modifier.padding(16.dp)) {
             LazyColumn {
 
-                items(viewModel.perfis) {
+                items(uiState.perfis) {
                     Column {
                         Card(
                             modifier = Modifier
@@ -143,7 +131,7 @@ fun TelaPerfis(viewModel: PerfilViewModel, irParaInicio: () -> Unit) {
                             colors = CardDefaults.cardColors(
                                 containerColor = CinzaCartao
                             ),
-                            border = if (it.nome == viewModel.perfilAtual) BorderStroke(2.dp, VermelhoNetflix) else BorderStroke(1.dp, CinzaBorda)
+                            border = if (it.nome == uiState.perfilAtual) BorderStroke(2.dp, VermelhoNetflix) else BorderStroke(1.dp, CinzaBorda)
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(12.dp),
@@ -153,7 +141,7 @@ fun TelaPerfis(viewModel: PerfilViewModel, irParaInicio: () -> Unit) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Avatar(
                                         it.nome,
-                                        if (it.nome == viewModel.perfilAtual) Color(232, 176, 4) else Color(74, 107, 138),
+                                        if (it.nome == uiState.perfilAtual) Color(232, 176, 4) else Color(74, 107, 138),
                                         Modifier.size(56.dp)
                                     )
                                     Spacer(modifier = Modifier.width(16.dp))

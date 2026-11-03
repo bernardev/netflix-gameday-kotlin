@@ -1,4 +1,4 @@
-package com.example.netflix
+package com.example.netflix.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Spacer
@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import com.example.netflix.R
 
 // EXCECAO COMBINADA: Image, painterResource e ContentScale nao foram apresentados nas aulas.
 // Sao usados so neste arquivo, para mostrar as fotos da pasta res/drawable.

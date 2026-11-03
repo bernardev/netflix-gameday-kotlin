@@ -1,4 +1,4 @@
-package com.example.netflix
+package com.example.netflix.data
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey

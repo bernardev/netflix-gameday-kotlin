@@ -1,4 +1,4 @@
-package com.example.netflix
+package com.example.netflix.ui
 
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
@@ -21,45 +21,25 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import com.example.netflix.data.Filme
+import com.example.netflix.viewmodel.FilmeViewModel
+import com.example.netflix.viewmodel.PerfilViewModel
 
 @Composable
 fun TelaFilme(id: Int, viewModel: PerfilViewModel, filmeViewModel: FilmeViewModel, irParaInicio: () -> Unit, irParaBuscar: () -> Unit, irParaMenu: () -> Unit, irParaFilme: (Int) -> Unit, voltar: () -> Unit) {
 
-    var novoNome by remember { mutableStateOf("") }
+    val perfilUiState by viewModel.uiState.collectAsState()
+    val filmeUiState by filmeViewModel.uiState.collectAsState()
     val context = LocalContext.current
-    val db = AppDatabase.getDatabase(context)
-    val filmeDAO = db.filmeDAO()
 
-    // O filme desta tela vem direto do banco, pelo id recebido na rota "filme/{id}"
-    var filme by remember { mutableStateOf(Filme(0, "", false)) }
-
-    LaunchedEffect(Unit) {
-        CoroutineScope(Dispatchers.IO).launch {
-            filme = buscarFilmePorId(id, filmeDAO)
-        }
-        filmeViewModel.carregar(filmeDAO)
-    }
-
-    // Descobre se o perfil atual e admin (so admin pode renomear e excluir filmes)
-    var ehAdmin = false
-    viewModel.nomesAdmin.forEach {
-        if (it == viewModel.perfilAtual) {
-            ehAdmin = true
-        }
-    }
+    val filme = filmeUiState.filmes.find { it.id == id } ?: Filme(0, "", false)
 
     // A tela e dividida em secoes dentro de uma LazyColumn, para o conteudo rolar
     // e nada ficar cortado em telas menores (ex.: perfil admin, que tem mais campos)
@@ -67,7 +47,7 @@ fun TelaFilme(id: Int, viewModel: PerfilViewModel, filmeViewModel: FilmeViewMode
 
     Scaffold(
         topBar = { BarraTopo("Detalhes do filme", voltar) },
-        bottomBar = { BarraInferior("filme", viewModel.perfilAtual, irParaInicio, irParaBuscar, irParaMenu) }
+        bottomBar = { BarraInferior("filme", perfilUiState.perfilAtual, irParaInicio, irParaBuscar, irParaMenu) }
     ) { innerPadding ->
 
         Surface(
@@ -138,8 +118,7 @@ fun TelaFilme(id: Int, viewModel: PerfilViewModel, filmeViewModel: FilmeViewMode
                                     }
                                 } else {
                                     BotaoNetflix("↓ Baixar", Color(43, 43, 43), Modifier.fillMaxWidth()) {
-                                        filmeViewModel.baixar(filme, filmeDAO)
-                                        filme = Filme(filme.id, filme.nome, true)
+                                        filmeViewModel.baixar(filme)
                                         Toast.makeText(context, "Download concluido", Toast.LENGTH_SHORT).show()
                                     }
                                 }
@@ -159,7 +138,7 @@ fun TelaFilme(id: Int, viewModel: PerfilViewModel, filmeViewModel: FilmeViewMode
                         }
 
                         if (secao == "admin") {
-                            if (ehAdmin) {
+                            if (perfilUiState.ehAdmin) {
                                 // Area do administrador separada em um cartao com borda vermelha
                                 Card(
                                     modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -180,21 +159,17 @@ fun TelaFilme(id: Int, viewModel: PerfilViewModel, filmeViewModel: FilmeViewMode
                                         )
                                         TextField(
                                             modifier = Modifier.fillMaxWidth(),
-                                            value = novoNome,
-                                            onValueChange = { novoNome = it },
+                                            value = filmeUiState.novoNome,
+                                            onValueChange = { filmeViewModel.atualizarNovoNome(it) },
                                             placeholder = { Text("Novo nome do filme") }
                                         )
                                         BotaoNetflix("Salvar nome", VermelhoNetflix, Modifier.fillMaxWidth()) {
-                                            if (novoNome == "") {
+                                            if (!filmeViewModel.renomear(filme)) {
                                                 Toast.makeText(context, "Digite um nome", Toast.LENGTH_SHORT).show()
-                                            } else {
-                                                filmeViewModel.renomear(filme, novoNome, filmeDAO)
-                                                filme = Filme(filme.id, novoNome, filme.baixado)
-                                                novoNome = ""
                                             }
                                         }
                                         BotaoNetflix("Excluir filme", Color(43, 43, 43), Modifier.fillMaxWidth()) {
-                                            filmeViewModel.excluir(filme, filmeDAO)
+                                            filmeViewModel.excluir(filme)
                                             voltar()
                                         }
                                     }
