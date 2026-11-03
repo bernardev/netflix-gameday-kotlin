@@ -54,13 +54,13 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     // ViewModel no Compose: viewModel() (LEIA-ME da Aula 13)
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4")
 
     // Icones (Aula 13)
     implementation("androidx.compose.material:material-icons-core:1.7.8")
 
     // Navegacao (Aula 13)
-    val nav_version = "2.10.2"
+    val nav_version = "2.9.0"
     implementation("androidx.navigation:navigation-compose:$nav_version")
 
     // Room (slides Aula 16 a 18)
