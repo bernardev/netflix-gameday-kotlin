@@ -233,7 +233,9 @@ val filmeViewModel: FilmeViewModel = viewModel(factory = FilmeViewModelFactory(f
 
 **Marcos:** Quando fomos abrir o projeto na sala no Android Studio ele não sincronizava, e descobrimos que era o `settings.gradle.kts` com `"com\.android.*"`, que o Kotlin não aceita, aí trocamos para `"com\\.android.*"` e funcionou, e também depois de mover os arquivos para os pacotes, um monte de coisa ficou vermelha por falta de import, e a que mais demorou para achar foi o `Imagens.kt` que parou de encontrar o `R`, porque o `R` fica no pacote `com.example.netflix` e precisou do `import com.example.netflix.R`.
 
-> ✏️ **PREENCHER PELOS OUTROS DOIS INTEGRANTES:** algum integrante teve dificuldade em algum ponto? Como resolveram?
+**Eduardo:** Quando fui preparar o projeto para abrir no Android Studio, o repositório só tinha os arquivos `.kt`, sem `settings.gradle.kts`, `build.gradle.kts` e `AndroidManifest.xml`. Tive que montar a estrutura do modelo *Empty Activity* seguindo o `build.gradle.kts` da Aula 19, com o KSP e as dependências do Room. Na revisão contra o material das aulas também vi que algumas telas usavam `LazyColumn` com parâmetros que o professor não mostrou (`contentPadding` e `verticalArrangement`). Troquei pelo `LazyColumn { items(...) }` simples, com `Spacer` entre os itens. Também separei o `NavHost` do `MainActivity` em um arquivo `AppNavigation.kt`, como no exemplo da Aula 13.
+
+> ✏️ **PREENCHER PELO OUTRO INTEGRANTE:** algum integrante teve dificuldade em algum ponto? Como resolveram?
 
 ---
 
