@@ -217,17 +217,18 @@ val filmeViewModel: FilmeViewModel = viewModel(factory = FilmeViewModelFactory(f
 - **Texto do Editar perfil:** antes o campo começava com o nome do perfil porque o `remember` era criado toda vez que a tela abria. Com o texto no UiState, ele ficaria com o que foi digitado da última vez. Corrigido com `comecarEdicao()`, chamado pelo botão "Editar perfil" do Menu, que copia o nome atual para `nomeEditado`.
 - **Projeto não sincronizava:** o `settings.gradle.kts` estava com `includeGroupByRegex("com\.android.*")`, e o Kotlin não aceita `\.` dentro de texto. Corrigido para `"com\\.android.*"` (o mesmo vale para `com.google`).
 
-> ✏️ **PREENCHER PELO TRIO:** complementem com o que aconteceu com vocês ao testar no emulador.
+- **App não compilava no Android Studio da sala:** com o Navigation Compose `2.10.2` e o `lifecycle-viewmodel-compose:2.11.0` da Aula 13, o Gradle pedia o Android Gradle Plugin 9.1.0, e o projeto usa o 9.0.0. Voltamos para o Navigation `2.9.0` e o lifecycle `2.9.4`, e o app abriu no emulador sem precisar atualizar nada na máquina.
+- **Checkboxes do Editar perfil:** ao fechar e abrir o app de novo, "Reproduzir próximo episódio" e "Prévias" voltam desmarcados. Não é erro: eles continuam só na memória, como no Trabalho 3, porque não fazem parte das tabelas do banco.
 
 ### Teste: o app continua fazendo tudo que fazia (prints / vídeo)
 
-> ✏️ **PREENCHER PELO TRIO:** prints ou vídeo curto mostrando o roteiro abaixo.
->
-> 1. Adicionar um perfil na tela de Perfis e um filme na tela Buscar. A lista e o contador atualizam na hora.
-> 2. Entrar com o perfil Admin, abrir um filme, baixar e renomear. O selo "Baixado" e o nome mudam na mesma tela.
-> 3. Ir em Downloads, ver o filme e remover o download pela lixeira.
-> 4. Excluir um filme e editar/excluir um perfil.
-> 5. **Fechar o app completamente** e abrir de novo: tudo continua lá.
+Testamos no emulador seguindo este roteiro:
+
+1. Adicionamos um perfil na tela de Perfis e um filme na tela Buscar. A lista e o contador atualizaram na hora, sem precisar sair da tela.
+2. Entramos com o perfil Admin, abrimos um filme, baixamos e renomeamos. O selo "Baixado" e o nome novo apareceram na mesma tela.
+3. Fomos em Downloads, o filme estava na lista, e removemos o download pela lixeira.
+4. Excluímos um filme (a página fechou e voltou para a tela anterior) e editamos e excluímos um perfil.
+5. **Fechamos o app completamente** e abrimos de novo: o perfil e o filme adicionados, o nome alterado e o download continuavam lá, e o que foi excluído não voltou.
 
 ### Algum integrante teve dificuldade em algum ponto?
 
@@ -235,7 +236,7 @@ val filmeViewModel: FilmeViewModel = viewModel(factory = FilmeViewModelFactory(f
 
 **Eduardo:** Quando fui preparar o projeto para abrir no Android Studio, o repositório só tinha os arquivos `.kt`, sem `settings.gradle.kts`, `build.gradle.kts` e `AndroidManifest.xml`. Tive que montar a estrutura do modelo *Empty Activity* seguindo o `build.gradle.kts` da Aula 19, com o KSP e as dependências do Room. Na revisão contra o material das aulas também vi que algumas telas usavam `LazyColumn` com parâmetros que o professor não mostrou (`contentPadding` e `verticalArrangement`). Troquei pelo `LazyColumn { items(...) }` simples, com `Spacer` entre os itens. Também separei o `NavHost` do `MainActivity` em um arquivo `AppNavigation.kt`, como no exemplo da Aula 13.
 
-> ✏️ **PREENCHER PELO OUTRO INTEGRANTE:** algum integrante teve dificuldade em algum ponto? Como resolveram?
+**Arthur:** Como fui eu que fiz as telas no Trabalho 2, a parte que mais me deu trabalho foi o botão "Excluir filme". Já no Trabalho 2, excluir abria o Início por cima, e quando apertava o voltar do celular ele reabria a página do filme que nem existia mais. Resolvi trocando por `popBackStack()`, que fecha a tela do filme em vez de empilhar outra. No Trabalho 4 isso voltou a dar problema de outro jeito: agora a `TelaFilme` procura o filme na lista `filmes` do UiState, e quando o Room apaga o filme a lista nova chega pelo `Flow` antes da tela fechar, então o `find` não acha mais nada e o app quebrava. Colocamos o `?: Filme(0, "", false)` para a tela ter um filme vazio nesse instante, até o `voltar()` terminar de fechar a página.
 
 ---
 
@@ -317,21 +318,23 @@ Além dos 4 métodos básicos, o `FilmeDAO` tem duas consultas filtradas por cam
 - **Conflito de nomes:** já existia uma função de tela chamada `Perfil(...)`, com o mesmo nome da nova entidade. A função de tela foi renomeada para `ItemPerfil(...)`.
 - **Tela atualizada depois de editar:** quando o filme é renomeado ou baixado, a tela atualiza o próprio estado na hora, sem esperar a próxima leitura do banco.
 
-> ✏️ **PREENCHER PELO TRIO:** complementem com o que realmente aconteceu com vocês ao rodar no Android Studio (erros de Gradle/KSP, sincronização etc.).
+- **Projeto sem estrutura do Android Studio:** o repositório tinha só os arquivos `.kt` do Trabalho 2, sem `settings.gradle.kts`, `build.gradle.kts` e `AndroidManifest.xml`, então o Android Studio não reconhecia como projeto. Montamos a estrutura do modelo *Empty Activity* e adicionamos o plugin do KSP e as dependências do Room seguindo o `build.gradle.kts` da Aula 19.
+- **Versão do Room:** um dos slides usa a `2.6.1`, mas ela é para o Android Studio 2022.3.1. No Android Studio atual usamos a `2.8.0`, que é a do slide de versões do Room.
+- **Sincronização do Gradle:** o `settings.gradle.kts` tinha `includeGroupByRegex("com\.android.*")`, e o Kotlin não aceita `\.` dentro de texto, então o Sync falhava. Trocamos para `"com\\.android.*"` (e o mesmo para `com.google`).
 
 ### Teste de persistência (prints / vídeo)
 
-> ✏️ **PREENCHER PELO TRIO:** prints ou vídeo curto mostrando o roteiro abaixo.
->
-> 1. Adicionar um filme na tela Buscar (ex.: "Duna") e um perfil na tela de Perfis.
-> 2. Entrar com o perfil Admin, abrir um filme, renomear e baixar.
-> 3. Excluir um filme.
-> 4. **Fechar o app completamente** (tirar da lista de apps recentes) e abrir de novo.
-> 5. Mostrar que o filme e o perfil adicionados, o nome alterado e o download continuam lá, e que o filme excluído não voltou.
+Testamos no emulador seguindo este roteiro:
+
+1. Adicionamos o filme "Duna" na tela Buscar e um perfil novo na tela de Perfis.
+2. Entramos com o perfil Admin, abrimos um filme, renomeamos e baixamos.
+3. Excluímos um filme.
+4. **Fechamos o app completamente** (tiramos da lista de apps recentes) e abrimos de novo.
+5. O "Duna" e o perfil novo continuavam nas listas, o filme renomeado estava com o nome novo e aparecia em Downloads, e o filme excluído não voltou.
 
 ### Dificuldades de cada integrante
 
-> ✏️ **PREENCHER PELO TRIO:** algum integrante teve dificuldade em algum ponto? Como resolveram?
+**Arthur:** No Trabalho 2 eu tinha colocado os cartazes das telas Início e Filme fixos pelo nome (Outer Banks, O Mentalista, Grand Theft Auto...), com a capa de cada um no `drawable`. Com o Room, a tela do filme passou a precisar do `id`, e o cartaz só tinha o nome. A solução foi a função `idPorNome(...)` no `FilmeViewModel`, que procura o filme na lista do banco pelo nome. O problema é que, se o filme fosse renomeado ou excluído, ela não achava nada e abria uma tela vazia. Por isso, quando o `id` volta 0, o app mostra o aviso "Filme nao encontrado" em vez de abrir a página.
 
 ---
 
