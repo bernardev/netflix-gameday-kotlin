@@ -230,6 +230,63 @@ Testamos no emulador seguindo este roteiro:
 4. Excluímos um filme (a página fechou e voltou para a tela anterior) e editamos e excluímos um perfil.
 5. **Fechamos o app completamente** e abrimos de novo: o perfil e o filme adicionados, o nome alterado e o download continuavam lá, e o que foi excluído não voltou.
 
+#### Prints do teste
+
+Emulador Pixel 7 com Android 36. Os prints estão na pasta [`docs/prints`](docs/prints).
+
+**1. Adicionar perfil e filme**
+
+| Print | O que mostra |
+|---|---|
+| [01](docs/prints/01-perfis-inicio.png) | Tela de Perfis ao abrir o app, com os 6 perfis iniciais |
+| [02](docs/prints/02-perfil-digitado.png) | "Eduardo" digitado no campo "Novo perfil" |
+| [03](docs/prints/03-perfil-adicionado.png) | Depois do **Add**, o perfil Eduardo aparece no fim da lista na hora |
+| [04](docs/prints/04-inicio-admin.png) | Entrando com o perfil Admin: tela Início com "Para Admin" |
+| [05](docs/prints/05-buscar-antes.png) | Tela Buscar antes de adicionar: "Todos os filmes (8)" |
+| [06](docs/prints/06-filme-digitado.png) | "Duna" digitado no campo "Buscar ou adicionar" |
+| [07](docs/prints/07-filme-adicionado.png) | Depois do **Add**, o contador muda para "Todos os filmes (9)" |
+| [07b](docs/prints/07b-filme-duna-na-lista.png) | Duna no fim da lista de filmes |
+
+**2. Baixar e renomear com o perfil Admin**
+
+| Print | O que mostra |
+|---|---|
+| [08](docs/prints/08-filme-admin-antes.png) | Página do filme Matrix com a "Área do administrador" (só aparece para o Admin) |
+| [09](docs/prints/09-filme-baixado.png) | Depois de tocar em **Baixar**: o selo "Baixado" e o botão "Já baixado" aparecem na mesma tela |
+| [10](docs/prints/10-novo-nome-digitado.png) | "Matrix Reloaded" digitado no campo "Novo nome do filme" |
+| [11](docs/prints/11-filme-renomeado.png) | Depois do **Salvar nome**: o título da página muda para Matrix Reloaded |
+
+**3. Remover download**
+
+| Print | O que mostra |
+|---|---|
+| [12](docs/prints/12-menu-7-perfis.png) | Menu Minha Netflix com "7 perfis nesta conta" (contando o Eduardo) |
+| [13](docs/prints/13-downloads-antes.png) | Downloads com 2 filmes: Seven (já vinha baixado) e Matrix Reloaded |
+| [14](docs/prints/14-download-removido.png) | Depois da lixeira no Seven: "Filmes baixados (1)" |
+
+**4. Excluir filme, editar e excluir perfil**
+
+| Print | O que mostra |
+|---|---|
+| [15](docs/prints/15-filme-antes-excluir.png) | Página do filme Bird Box, antes de excluir |
+| [16](docs/prints/16-filme-excluido.png) | Depois do **Excluir filme**: a página fecha, volta para Buscar e o contador cai para 8 |
+| [17](docs/prints/17-editar-perfil-antes.png) | Editar perfil da Gabi |
+| [18](docs/prints/18-editar-perfil-digitado.png) | Nome trocado para "Gabriela" |
+| [19](docs/prints/19-perfil-salvo.png) | Depois do **Salvar**, o Menu já mostra Gabriela |
+| [20](docs/prints/20-perfis-gabriela.png) | Lista de perfis com Gabriela no lugar de Gabi |
+| [21](docs/prints/21-excluir-perfil-antes.png) | Editar perfil do lau, antes de excluir |
+| [22](docs/prints/22-perfil-excluido.png) | Depois do **Excluir perfil**: volta para a tela de Perfis sem o lau |
+
+**5. Fechar o app e abrir de novo**
+
+| Print | O que mostra |
+|---|---|
+| [23](docs/prints/23-recentes.png) | App na lista de recentes, antes de fechar |
+| [24](docs/prints/24-app-fechado.png) | App fechado (removido dos recentes) |
+| [25](docs/prints/25-reaberto-perfis.png) | App aberto de novo: Eduardo e Gabriela continuam, e o lau não voltou |
+| [26](docs/prints/26-reaberto-filmes.png) | Buscar: "Todos os filmes (8)", Duna e Matrix Reloaded continuam, e o Bird Box não voltou |
+| [27](docs/prints/27-reaberto-downloads.png) | Downloads: Matrix Reloaded continua baixado, e o Seven continua sem download |
+
 ### Algum integrante teve dificuldade em algum ponto?
 
 **Marcos:** Quando fomos abrir o projeto na sala no Android Studio ele não sincronizava, e descobrimos que era o `settings.gradle.kts` com `"com\.android.*"`, que o Kotlin não aceita, aí trocamos para `"com\\.android.*"` e funcionou, e também depois de mover os arquivos para os pacotes, um monte de coisa ficou vermelha por falta de import, e a que mais demorou para achar foi o `Imagens.kt` que parou de encontrar o `R`, porque o `R` fica no pacote `com.example.netflix` e precisou do `import com.example.netflix.R`.
